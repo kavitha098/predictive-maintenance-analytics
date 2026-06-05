@@ -1,0 +1,4 @@
+Timestamp,Equipment_ID,Temperature (°C),Vibration (m/s²),Anomaly_Alert
+2025-01-05 10:30:00,EQ001,95.2,8.5,1
+2025-01-05 11:00:00,EQ001,98.7,9.1,1
+2025-01-05 12:15:00,EQ003,92.3,8.8,1
