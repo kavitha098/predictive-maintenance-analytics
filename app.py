@@ -2,13 +2,17 @@ import streamlit as st
 import pandas as pd
 import os
 
-from utils.data_loader import (
-    load_data,
-    convert_timestamp,
-    get_equipment_list,
-    filter_equipment,
-    get_dataset_info
-)
+try:
+    from utils.data_loader import (
+        load_data,
+        convert_timestamp,
+        get_equipment_list,
+        filter_equipment,
+        get_dataset_info
+    )
+except Exception as e:
+    st.error(f"Error importing data_loader.py: {e}")
+    st.stop()
 
 from utils.preprocessing import (
     full_preprocessing,
