@@ -1,14 +1,22 @@
+# utils/preprocessing.py
+
 import pandas as pd
 import numpy as np
 
 
-def handle_missing_values(df):
+def clean_data(df):
     """
-    Fill missing values
+    Basic cleaning
     """
 
+    df = df.copy()
+
+    # Remove duplicates
+    df.drop_duplicates(inplace=True)
+
+    # Fill numeric missing values
     numeric_cols = df.select_dtypes(
-        include=np.number
+        include=["number"]
     ).columns
 
     for col in numeric_cols:
@@ -16,91 +24,120 @@ def handle_missing_values(df):
             df[col].median()
         )
 
+    # Fill categorical missing values
     categorical_cols = df.select_dtypes(
-        include="object"
+        include=["object"]
     ).columns
 
     for col in categorical_cols:
-        df[col] = df[col].fillna("Unknown")
+        df[col] = df[col].fillna(
+            "Unknown"
+        )
 
     return df
 
 
-def create_rolling_features(df):
-    """
-    Rolling mean and std
-    """
+def convert_timestamp(df):
+
+    if "Timestamp" in df.columns:
+
+        df["Timestamp"] = pd.to_datetime(
+            df["Timestamp"],
+            errors="coerce"
+        )
+
+        df = df.sort_values(
+            "Timestamp"
+        )
+
+        df.set_index(
+            "Timestamp",
+            inplace=True
+        )
+
+    return df
+
+
+def create_target_column(df):
+
+    possible_targets = [
+        "Failure_Status",
+        "Fault Detected",
+        "Predictive Maintenance Trigger"
+    ]
+
+    for col in possible_targets:
+
+        if col in df.columns:
+
+            df["Target"] = df[col]
+
+            break
+
+    return df
+
+
+def create_rolling_features(
+    df,
+    window=10
+):
 
     if "Temperature (°C)" in df.columns:
 
         df["Temp_Rolling_Mean"] = (
             df["Temperature (°C)"]
-            .rolling(window=10)
+            .rolling(window)
             .mean()
         )
 
         df["Temp_Rolling_STD"] = (
             df["Temperature (°C)"]
-            .rolling(window=10)
+            .rolling(window)
             .std()
         )
 
     if "Vibration (m/s²)" in df.columns:
 
-        df["Vib_Rolling_Mean"] = (
+        df["Vibration_Rolling_Mean"] = (
             df["Vibration (m/s²)"]
-            .rolling(window=10)
+            .rolling(window)
             .mean()
         )
 
-        df["Vib_Rolling_STD"] = (
+        df["Vibration_Rolling_STD"] = (
             df["Vibration (m/s²)"]
-            .rolling(window=10)
+            .rolling(window)
             .std()
         )
 
     return df
 
 
-def remove_duplicates(df):
-    """
-    Remove duplicate rows
-    """
-    return df.drop_duplicates()
+def create_time_features(df):
+
+    if isinstance(
+        df.index,
+        pd.DatetimeIndex
+    ):
+
+        df["Year"] = df.index.year
+        df["Month"] = df.index.month
+        df["Day"] = df.index.day
+        df["Hour"] = df.index.hour
+
+    return df
 
 
-def prepare_features(df):
-    """
-    Select ML features
-    """
+def preprocess_pipeline(df):
 
-    features = [
-        "Temperature (°C)",
-        "Vibration (m/s²)",
-        "Voltage (V)",
-        "Current (A)",
-        "Humidity (%)",
-        "Power (W)"
-    ]
+    df = clean_data(df)
 
-    available_features = [
-        col for col in features
-        if col in df.columns
-    ]
+    df = convert_timestamp(df)
 
-    X = df[available_features]
-
-    y = df["Fault Detected"]
-
-    return X, y
-
-
-def full_preprocessing(df):
-
-    df = handle_missing_values(df)
-
-    df = remove_duplicates(df)
+    df = create_target_column(df)
 
     df = create_rolling_features(df)
+
+    df = create_time_features(df)
 
     return df
