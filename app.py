@@ -1,14 +1,14 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
+st.sidebar.file_uploader()
 
-st.title("Predictive Maintenance Analytics")
-
-uploaded_file = st.sidebar.file_uploader(
-    "Upload Dataset",
-    type=["csv"]
+st.sidebar.slider(
+    "Z-Score Threshold",
+    min_value=2.0,
+    max_value=4.0,
+    value=3.0
 )
 
-if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-    st.dataframe(df.head())
+st.sidebar.selectbox(
+    "Select Equipment",
+    df["Equipment_ID"].unique()
+)
