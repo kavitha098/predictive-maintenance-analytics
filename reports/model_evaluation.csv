@@ -1,8 +1,0 @@
-import pandas as pd
-
-def save_model_evaluation(results_df):
-
-    results_df.to_csv(
-        "reports/model_evaluation.csv",
-        index=True
-    )
