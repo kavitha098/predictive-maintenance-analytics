@@ -1,172 +1,54 @@
-"""
-data_loader.py
-
-Handles:
-1. CSV loading
-2. Datetime conversion
-3. Missing value handling
-4. Basic dataset information
-"""
 import pandas as pd
 
 
-def load_data(file_path):
-    """
-    Load CSV dataset
-
-    Parameters:
-    ----------
-    file_path : str or uploaded file
-
-    Returns:
-    -------
-    DataFrame
-    """
-
-    try:
-        df = pd.read_csv(file_path)
-
-        return df
-
-    except Exception as e:
-        print(f"Error loading dataset: {e}")
-        return None
+def load_data(file):
+    return pd.read_csv(file)
 
 
 def convert_timestamp(df):
-    """
-    Convert Timestamp column to datetime
-    """
+    timestamp_cols = [
+        col for col in df.columns
+        if "time" in col.lower()
+        or "date" in col.lower()
+    ]
 
-    if "Timestamp" in df.columns:
-
-        df["Timestamp"] = pd.to_datetime(
-            df["Timestamp"],
-            errors="coerce"
-        )
-
-        df = df.sort_values("Timestamp")
-
-    return df
-
-
-def set_datetime_index(df):
-    """
-    Set Timestamp as index
-    """
-
-    if "Timestamp" in df.columns:
-
-        df.set_index(
-            "Timestamp",
-            inplace=True
-        )
+    if timestamp_cols:
+        try:
+            df[timestamp_cols[0]] = pd.to_datetime(
+                df[timestamp_cols[0]]
+            )
+        except:
+            pass
 
     return df
 
 
-def handle_missing_values(df):
-    """
-    Fill missing values
-    """
-
-    numeric_cols = df.select_dtypes(
-        include=["number"]
-    ).columns
-
-    for col in numeric_cols:
-
-        df[col] = df[col].fillna(
-            df[col].median()
+def get_equipment_list(df):
+    if "Equipment ID" in df.columns:
+        return sorted(
+            df["Equipment ID"].dropna().unique()
         )
 
-    categorical_cols = df.select_dtypes(
-        include=["object"]
-    ).columns
-
-    for col in categorical_cols:
-
-        df[col] = df[col].fillna(
-            "Unknown"
-        )
-
-    return df
+    return []
 
 
-def get_dataset_info(df):
-    """
-    Return dataset summary
-    """
+def filter_equipment(df, equipment):
 
-    info = {
-        "Rows": df.shape[0],
-        "Columns": df.shape[1],
-        "Missing Values": int(df.isnull().sum().sum())
-    }
-
-    return info
-
-
-def get_numeric_columns(df):
-    """
-    Return numeric columns
-    """
-
-    return list(
-        df.select_dtypes(
-            include=["number"]
-        ).columns
-    )
-
-
-def get_categorical_columns(df):
-    """
-    Return categorical columns
-    """
-
-    return list(
-        df.select_dtypes(
-            include=["object"]
-        ).columns
-    )
-
-
-def filter_equipment(df, equipment_id):
-    """
-    Filter selected equipment
-    """
-
-    if equipment_id == "All":
+    if (
+        equipment == "All"
+        or "Equipment ID" not in df.columns
+    ):
         return df
 
     return df[
-        df["Equipment_ID"] == equipment_id
+        df["Equipment ID"] == equipment
     ]
 
 
-def load_and_preprocess(file_path):
-    """
-    Complete preprocessing pipeline
-    """
+def get_dataset_info(df):
 
-    df = load_data(file_path)
-
-    if df is None:
-        return None
-
-    df = convert_timestamp(df)
-
-    df = handle_missing_values(df)
-
-    return df
-
-
-if __name__ == "__main__":
-
-    df = load_and_preprocess(
-        "data/sensor_maintenance_data.csv"
-    )
-
-    print(get_dataset_info(df))
-
-    print(df.head())
+    return {
+        "Rows": df.shape[0],
+        "Columns": df.shape[1],
+        "Missing Values": df.isnull().sum().sum()
+    }
