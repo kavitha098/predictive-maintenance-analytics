@@ -1,0 +1,130 @@
+# ==========================
+# Python
+# ==========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Compiled Extensions
+*.so
+
+# Distribution / Packaging
+.Python
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ==========================
+# Virtual Environment
+# ==========================
+venv/
+env/
+ENV/
+.venv/
+
+# ==========================
+# Jupyter Notebook
+# ==========================
+.ipynb_checkpoints
+
+# ==========================
+# Streamlit
+# ==========================
+.streamlit/secrets.toml
+
+# ==========================
+# IDE Files
+# ==========================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ==========================
+# OS Files
+# ==========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ==========================
+# Logs
+# ==========================
+*.log
+logs/
+
+# ==========================
+# Environment Variables
+# ==========================
+.env
+.env.*
+
+# ==========================
+# Model Files
+# ==========================
+models/*.pkl
+models/*.joblib
+
+# ==========================
+# Reports
+# ==========================
+reports/*.pdf
+reports/*.csv
+reports/*.xlsx
+
+# ==========================
+# Data Files (Optional)
+# Uncomment if dataset is large
+# ==========================
+# data/*.csv
+
+# ==========================
+# Cache
+# ==========================
+.pytest_cache/
+.cache/
+.mypy_cache/
+
+# ==========================
+# Temporary Files
+# ==========================
+*.tmp
+*.temp
+
+# ==========================
+# Coverage Reports
+# ==========================
+.coverage
+htmlcov/
+
+# ==========================
+# Machine Learning Artifacts
+# ==========================
+mlruns/
+wandb/
+tensorboard_logs/
+
+# ==========================
+# Streamlit Cache
+# ==========================
+.streamlit/cache/
+
+# ==========================
+# Miscellaneous
+# ==========================
+*.bak
+*.swp
+*.swo
