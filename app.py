@@ -1,85 +1,68 @@
 import streamlit as st
 import pandas as pd
-import os
+import plotly.express as px
 
-try:
-    from utils.data_loader import (
-        load_data,
-        convert_timestamp,
-        get_equipment_list,
-        filter_equipment,
-        get_dataset_info
-    )
-except Exception as e:
-    st.error(f"Error importing data_loader.py: {e}")
-    st.stop()
+from utils.data_loader import (
+    load_data,
+    get_equipment_ids,
+    filter_equipment,
+    get_failure_rows
+)
 
 from utils.preprocessing import (
-    full_preprocessing,
-    prepare_features
+    preprocess_pipeline
 )
 
 from utils.helper import (
     calculate_operating_hours,
-    current_temperature,
-    count_alerts
-)
-
-from analytics.feature_engineering import (
-    create_all_features
+    get_current_temperature,
+    get_anomaly_count
 )
 
 from analytics.anomaly_detection import (
     detect_anomalies,
-    get_anomaly_records
+    get_anomaly_rows
 )
 
 from analytics.root_cause_analysis import (
     failure_summary,
-    root_cause_records
+    equipment_failure_analysis
 )
 
 from analytics.visualization import (
-    plot_temperature,
-    plot_vibration,
+    plot_temperature_trend,
+    plot_vibration_trend,
+    plot_failure_heatmap,
     plot_failure_distribution,
-    plot_correlation_heatmap,
-    create_wordcloud,
-    plot_anomaly_trend
+    generate_wordcloud
 )
 
-from ml.train_models import (
-    train_and_save_models
+from ml.train_model import (
+    train_all_models
 )
-
-from analytics.generate_pdf import (
-    create_root_cause_report
-)
-
-# --------------------------------------------------
-# PAGE CONFIG
-# --------------------------------------------------
 
 st.set_page_config(
-    page_title="Predictive Maintenance Dashboard",
+    page_title="Predictive Maintenance Analytics",
     page_icon="⚙️",
     layout="wide"
 )
 
-st.title("⚙️ Predictive Maintenance System")
+st.title("⚙️ Predictive Maintenance Analytics Dashboard")
 
-# --------------------------------------------------
-# SIDEBAR
-# --------------------------------------------------
+st.markdown("---")
+
+# =========================
+# Sidebar
+# =========================
 
 st.sidebar.header("Configuration")
 
 uploaded_file = st.sidebar.file_uploader(
-    "Upload Sensor CSV File",
+    "Upload Sensor CSV",
     type=["csv"]
 )
 
-threshold = st.sidebar.slider(
+z_threshold = st.sidebar.slider(
     "Z-Score Threshold",
     min_value=2.0,
     max_value=4.0,
@@ -87,320 +70,259 @@ threshold = st.sidebar.slider(
     step=0.1
 )
 
-# --------------------------------------------------
-# LOAD DATA
-# --------------------------------------------------
+# =========================
+# Load Data
+# =========================
 
-if uploaded_file is not None:
+df = load_data(uploaded_file)
 
-    df = load_data(uploaded_file)
+if df.empty:
+    st.warning("Upload dataset to continue.")
+    st.stop()
 
-    df = convert_timestamp(df)
+# =========================
+# Preprocessing
+# =========================
 
-    df = full_preprocessing(df)
+df = preprocess_pipeline(df)
 
-    df = create_all_features(df)
+# =========================
+# Equipment Filter
+# =========================
 
-    # Equipment Filter
-    equipment_list = get_equipment_list(df)
+equipment_list = get_equipment_ids(df)
 
-    selected_equipment = st.sidebar.selectbox(
-        "Select Equipment",
-        ["All"] + list(equipment_list)
-    )
+selected_equipment = st.sidebar.selectbox(
+    "Select Equipment",
+    equipment_list
+)
 
-    df = filter_equipment(
-        df,
-        selected_equipment
-    )
+df = filter_equipment(
+    df,
+    selected_equipment
+)
 
-    # Detect Anomalies
-    df = detect_anomalies(
-        df,
-        threshold
-    )
+# =========================
+# Anomaly Detection
+# =========================
 
-    # --------------------------------------------------
-    # DATASET INFO
-    # --------------------------------------------------
+df = detect_anomalies(
+    df,
+    threshold=z_threshold
+)
 
-    st.subheader("Dataset Information")
+# =========================
+# Dashboard Metrics
+# =========================
 
-    info = get_dataset_info(df)
+operating_hours = calculate_operating_hours(df)
 
-    col_a, col_b, col_c = st.columns(3)
+current_temp = get_current_temperature(df)
 
-    col_a.metric("Rows", info["Rows"])
-    col_b.metric("Columns", info["Columns"])
-    col_c.metric("Missing Values", info["Missing Values"])
+critical_alerts = get_anomaly_count(df)
 
-    # --------------------------------------------------
-    # KPI SECTION
-    # --------------------------------------------------
+c1, c2, c3 = st.columns(3)
 
-    st.subheader("Real-Time Equipment Metrics")
-
-    k1, k2, k3 = st.columns(3)
-
-    k1.metric(
+with c1:
+    st.metric(
         "Operating Hours",
-        calculate_operating_hours(df)
+        operating_hours
     )
 
-    k2.metric(
-        "Current Temperature (°C)",
-        current_temperature(df)
+with c2:
+    st.metric(
+        "Current Temperature",
+        f"{current_temp} °C"
     )
 
-    k3.metric(
+with c3:
+    st.metric(
         "Critical Alerts",
-        count_alerts(df)
+        critical_alerts
     )
 
-    # --------------------------------------------------
-    # RAW DATA
-    # --------------------------------------------------
+st.markdown("---")
 
-    st.subheader("Sensor Data")
+# =========================
+# Sensor Trend
+# =========================
 
-    st.dataframe(
-        df,
-        use_container_width=True
+st.subheader("Temperature Trend")
+
+plot_temperature_trend(df)
+
+st.subheader("Vibration Trend")
+
+plot_vibration_trend(df)
+
+# =========================
+# Failure Ceiling Line Chart
+# =========================
+
+st.subheader("Sensor Drift Analysis")
+
+if "Temperature (°C)" in df.columns:
+
+    failure_limit = (
+        df["Temperature (°C)"].mean()
+        +
+        (z_threshold *
+         df["Temperature (°C)"].std())
     )
 
-    # --------------------------------------------------
-    # TEMPERATURE TREND
-    # --------------------------------------------------
+    chart_df = pd.DataFrame({
+        "Temperature":
+        df["Temperature (°C)"],
 
-    st.subheader("Temperature Trend")
+        "Failure Ceiling":
+        failure_limit
+    })
 
-    temp_fig = plot_temperature(df)
+    st.line_chart(chart_df)
 
-    st.pyplot(temp_fig)
+# =========================
+# Active Failures
+# =========================
 
-    # --------------------------------------------------
-    # VIBRATION TREND
-    # --------------------------------------------------
+st.subheader("Failure Records")
 
-    st.subheader("Vibration Trend")
+failure_rows = get_failure_rows(df)
 
-    vib_fig = plot_vibration(df)
+st.dataframe(
+    failure_rows,
+    use_container_width=True
+)
 
-    st.pyplot(vib_fig)
+# =========================
+# Anomaly Records
+# =========================
 
-    # --------------------------------------------------
-    # ANOMALY TREND
-    # --------------------------------------------------
+st.subheader("Anomaly Alerts")
 
-    st.subheader("Anomaly Detection")
+anomaly_rows = get_anomaly_rows(df)
 
-    anomaly_fig = plot_anomaly_trend(df)
+st.dataframe(
+    anomaly_rows,
+    use_container_width=True
+)
 
-    st.pyplot(anomaly_fig)
+# =========================
+# Root Cause Analysis
+# =========================
 
-    # --------------------------------------------------
-    # ANOMALY RECORDS
-    # --------------------------------------------------
+st.subheader("Root Cause Analysis")
 
-    st.subheader("Anomaly Records")
+summary = failure_summary(df)
 
-    anomaly_df = get_anomaly_records(df)
+col1, col2 = st.columns(2)
 
-    st.dataframe(
-        anomaly_df,
-        use_container_width=True
-    )
-
-    # Save Report CSV
-
-    os.makedirs(
-        "reports",
-        exist_ok=True
-    )
-
-    anomaly_df.to_csv(
-        "reports/anomaly_report.csv",
-        index=False
-    )
-
-    # --------------------------------------------------
-    # FAILURE ANALYSIS
-    # --------------------------------------------------
-
-    st.subheader("Failure Summary")
-
-    summary = failure_summary(df)
-
-    s1, s2, s3, s4 = st.columns(4)
-
-    s1.metric(
+with col1:
+    st.metric(
         "Total Failures",
         summary["Total Failures"]
     )
 
-    s2.metric(
-        "Avg Temp",
-        summary["Average Temperature"]
+with col2:
+    st.metric(
+        "Failure Rate %",
+        summary["Failure Rate (%)"]
     )
 
-    s3.metric(
-        "Avg Vibration",
-        summary["Average Vibration"]
+st.markdown("### Equipment Failure Ranking")
+
+equipment_failures = (
+    equipment_failure_analysis(df)
+)
+
+if not equipment_failures.empty:
+
+    fig = px.bar(
+        equipment_failures,
+        x="Equipment_ID",
+        y="Failure_Count",
+        title="Failures by Equipment"
     )
 
-    s4.metric(
-        "Avg Voltage",
-        summary["Average Voltage"]
-    )
-
-    # --------------------------------------------------
-    # ROOT CAUSE ANALYSIS
-    # --------------------------------------------------
-
-    st.subheader("Root Cause Analysis")
-
-    root_df = root_cause_records(df)
-
-    st.dataframe(
-        root_df,
+    st.plotly_chart(
+        fig,
         use_container_width=True
     )
 
-    # --------------------------------------------------
-    # FAILURE DISTRIBUTION
-    # --------------------------------------------------
+# =========================
+# Correlation Heatmap
+# =========================
 
-    st.subheader("Failure Distribution")
+st.subheader("Correlation Analysis")
 
-    fail_fig = plot_failure_distribution(df)
+plot_failure_heatmap(df)
 
-    st.pyplot(fail_fig)
+# =========================
+# Failure Distribution
+# =========================
 
-    # --------------------------------------------------
-    # HEATMAP
-    # --------------------------------------------------
+st.subheader("Failure Distribution")
 
-    st.subheader("Correlation Heatmap")
+plot_failure_distribution(df)
 
-    heatmap_fig = plot_correlation_heatmap(df)
+# =========================
+# Word Cloud
+# =========================
 
-    st.pyplot(heatmap_fig)
+st.subheader("Equipment Word Cloud")
 
-    # --------------------------------------------------
-    # WORD CLOUD
-    # --------------------------------------------------
+generate_wordcloud(df)
 
-    st.subheader("Failure Type Word Cloud")
+# =========================
+# Raw Data
+# =========================
 
-    wc_fig = create_wordcloud(df)
+with st.expander("View Dataset"):
 
-    if wc_fig is not None:
-        st.pyplot(wc_fig)
-
-    # --------------------------------------------------
-    # MACHINE LEARNING
-    # --------------------------------------------------
-
-    st.subheader("Machine Learning Model Evaluation")
-
-    try:
-
-        results_df = train_and_save_models(df)
-
-        st.dataframe(
-            results_df,
-            use_container_width=True
-        )
-
-        results_df.to_csv(
-            "reports/model_evaluation.csv",
-            index=False
-        )
-
-        st.success(
-            "Models trained successfully."
-        )
-
-    except Exception as e:
-
-        st.error(
-            f"Model Training Error: {e}"
-        )
-
-    # --------------------------------------------------
-    # PDF REPORT
-    # --------------------------------------------------
-
-    try:
-
-        failure_df = df[
-            df["Fault Detected"] == 1
-        ]
-
-        create_root_cause_report(
-            failure_df
-        )
-
-        st.success(
-            "Root Cause PDF Report Generated."
-        )
-
-    except Exception as e:
-
-        st.warning(
-            f"PDF Generation Error: {e}"
-        )
-
-    # --------------------------------------------------
-    # DOWNLOADS
-    # --------------------------------------------------
-
-    st.subheader("Download Reports")
-
-    if os.path.exists(
-        "reports/model_evaluation.csv"
-    ):
-        with open(
-            "reports/model_evaluation.csv",
-            "rb"
-        ) as f:
-
-            st.download_button(
-                "Download Model Evaluation",
-                f,
-                file_name="model_evaluation.csv"
-            )
-
-    if os.path.exists(
-        "reports/anomaly_report.csv"
-    ):
-        with open(
-            "reports/anomaly_report.csv",
-            "rb"
-        ) as f:
-
-            st.download_button(
-                "Download Anomaly Report",
-                f,
-                file_name="anomaly_report.csv"
-            )
-
-    if os.path.exists(
-        "reports/root_cause_report.pdf"
-    ):
-        with open(
-            "reports/root_cause_report.pdf",
-            "rb"
-        ) as f:
-
-            st.download_button(
-                "Download Root Cause PDF",
-                f,
-                file_name="root_cause_report.pdf"
-            )
-
-else:
-
-    st.info(
-        "Upload sensor_maintenance_data.csv to start analysis."
+    st.dataframe(
+        df,
+        use_container_width=True
     )
+
+# =========================
+# Machine Learning Section
+# =========================
+
+st.markdown("---")
+
+st.header("Machine Learning Models")
+
+if st.button("Train Models"):
+
+    with st.spinner(
+        "Training models..."
+    ):
+
+        results = train_all_models(df)
+
+    st.success(
+        "Training Completed"
+    )
+
+    st.dataframe(
+        results,
+        use_container_width=True
+    )
+
+    best_model = results.sort_values(
+        by="R2 Score",
+        ascending=False
+    ).iloc[0]
+
+    st.success(
+        f"Best Model: {best_model['Model']}"
+    )
+
+# =========================
+# Footer
+# =========================
+
+st.markdown("---")
+
+st.caption(
+    "Predictive Maintenance Analytics | Streamlit Dashboard"
+)
