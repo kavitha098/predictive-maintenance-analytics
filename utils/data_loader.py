@@ -1,13 +1,3 @@
-"""
-data_loader.py
-
-Handles:
-1. CSV loading
-2. Datetime conversion
-3. Missing value handling
-4. Basic dataset information
-"""
-
 import pandas as pd
 
 
