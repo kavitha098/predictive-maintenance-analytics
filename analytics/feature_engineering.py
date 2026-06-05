@@ -1,73 +1,71 @@
+# analytics/feature_engineering.py
+
 import pandas as pd
 
 
 def create_time_features(df):
 
-    if "Timestamp" in df.columns:
+    df = df.copy()
 
-        df["Hour"] = df["Timestamp"].dt.hour
+    if isinstance(df.index, pd.DatetimeIndex):
 
-        df["Day"] = df["Timestamp"].dt.day
-
-        df["Month"] = df["Timestamp"].dt.month
-
-        df["Weekday"] = (
-            df["Timestamp"]
-            .dt.day_name()
-        )
+        df["Year"] = df.index.year
+        df["Month"] = df.index.month
+        df["Day"] = df.index.day
+        df["Hour"] = df.index.hour
 
     return df
 
 
-def rolling_features(df):
+def create_rolling_features(df, window=10):
+
+    df = df.copy()
 
     if "Temperature (°C)" in df.columns:
 
         df["Temp_Rolling_Mean"] = (
             df["Temperature (°C)"]
-            .rolling(window=10)
+            .rolling(window)
             .mean()
         )
 
         df["Temp_Rolling_STD"] = (
             df["Temperature (°C)"]
-            .rolling(window=10)
+            .rolling(window)
             .std()
         )
 
     if "Vibration (m/s²)" in df.columns:
 
-        df["Vib_Rolling_Mean"] = (
+        df["Vibration_Rolling_Mean"] = (
             df["Vibration (m/s²)"]
-            .rolling(window=10)
+            .rolling(window)
             .mean()
         )
 
-        df["Vib_Rolling_STD"] = (
+        df["Vibration_Rolling_STD"] = (
             df["Vibration (m/s²)"]
-            .rolling(window=10)
+            .rolling(window)
             .std()
         )
 
     return df
 
 
-def operating_conditions(df):
+def create_failure_feature(df):
 
-    df["Power_Factor"] = (
-        df["Voltage (V)"] *
-        df["Current (A)"]
-    )
+    possible_targets = [
+        "Failure_Status",
+        "Fault Detected",
+        "Predictive Maintenance Trigger"
+    ]
 
-    return df
+    for col in possible_targets:
 
+        if col in df.columns:
 
-def create_all_features(df):
+            df["Failure_Target"] = df[col]
 
-    df = create_time_features(df)
-
-    df = rolling_features(df)
-
-    df = operating_conditions(df)
+            break
 
     return df
