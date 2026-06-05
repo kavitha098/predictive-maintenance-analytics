@@ -1,31 +1,39 @@
-import pandas as pd
-import numpy as np
+# ml/predict.py
+
 import joblib
+import pandas as pd
 
-# Load dataset
-df = pd.read_csv("data/sensor_maintenance_data.csv")
 
-df = df.dropna()
+def load_model(model_name):
 
-numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+    model_paths = {
+        "Linear Regression":
+        "models/linear_regression.pkl",
 
-target_col = numeric_cols[-1]
+        "KNN":
+        "models/knn_regressor.pkl",
 
-feature_cols = numeric_cols[:-1]
+        "Random Forest":
+        "models/random_forest.pkl",
 
-# Load Model
-model = joblib.load(
-    "models/random_forest.pkl"
-)
+        "XGBoost":
+        "models/xgboost_model.pkl"
+    }
 
-print("\nRequired Features:")
-print(feature_cols)
+    return joblib.load(
+        model_paths[model_name]
+    )
 
-# Use first row as sample
-sample = df[feature_cols].iloc[[0]]
 
-prediction = model.predict(sample)
+def make_prediction(
+    model_name,
+    input_df
+):
 
-print("\nPrediction Result")
-print("-----------------")
-print(f"Predicted Value: {prediction[0]}")
+    model = load_model(model_name)
+
+    prediction = model.predict(
+        input_df
+    )
+
+    return prediction
