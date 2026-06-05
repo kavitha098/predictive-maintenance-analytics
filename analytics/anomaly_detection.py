@@ -1,55 +1,57 @@
+# analytics/anomaly_detection.py
+
 import numpy as np
 import pandas as pd
 
 
-def calculate_zscore(series):
+def calculate_z_scores(df):
     """
-    Calculate Z-score
-    """
-
-    mean = series.mean()
-    std = series.std()
-
-    if std == 0:
-        return pd.Series([0] * len(series))
-
-    return (series - mean) / std
-
-
-def detect_anomalies(df, threshold=3.0):
-    """
-    Detect anomalies using Z-score
+    Calculate Z-Scores for Temperature and Vibration
     """
 
     df = df.copy()
 
-    df["Temp_Z"] = calculate_zscore(
-        df["Temperature (°C)"]
-    )
+    if "Temperature (°C)" in df.columns:
+        df["Temp_Z"] = (
+            df["Temperature (°C)"]
+            - df["Temperature (°C)"].mean()
+        ) / df["Temperature (°C)"].std()
 
-    df["Vibration_Z"] = calculate_zscore(
-        df["Vibration (m/s²)"]
-    )
+    if "Vibration (m/s²)" in df.columns:
+        df["Vibration_Z"] = (
+            df["Vibration (m/s²)"]
+            - df["Vibration (m/s²)"].mean()
+        ) / df["Vibration (m/s²)"].std()
 
-    df["Voltage_Z"] = calculate_zscore(
-        df["Voltage (V)"]
-    )
+    return df
+
+
+def detect_anomalies(df, threshold=3.0):
+    """
+    Generate anomaly alerts
+    """
+
+    df = calculate_z_scores(df)
 
     df["Anomaly_Alert"] = np.where(
         (abs(df["Temp_Z"]) > threshold)
-        |
-        (abs(df["Vibration_Z"]) > threshold)
-        |
-        (abs(df["Voltage_Z"]) > threshold),
+        | (abs(df["Vibration_Z"]) > threshold),
         1,
-        0
+        0,
     )
 
     return df
 
 
-def get_anomaly_records(df):
+def get_anomaly_count(df):
+    if "Anomaly_Alert" not in df.columns:
+        return 0
 
-    return df[
-        df["Anomaly_Alert"] == 1
-    ]
+    return int(df["Anomaly_Alert"].sum())
+
+
+def get_anomaly_rows(df):
+    if "Anomaly_Alert" not in df.columns:
+        return pd.DataFrame()
+
+    return df[df["Anomaly_Alert"] == 1]
