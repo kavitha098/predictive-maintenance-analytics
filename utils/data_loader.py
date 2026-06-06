@@ -2,28 +2,36 @@ import pandas as pd
 
 
 def load_data(file):
+    """
+    Load CSV file and create Timestamp column if missing.
+    """
 
     try:
         df = pd.read_csv(file)
-           if "Timestamp" not in df.columns:
 
-               df["Timestamp"] = pd.date_range(
-                  start="2024-01-01",
-                  periods=len(df),
-                  freq="min"
-               )
-         
-         
-      
+        # Create timestamp if not present
+        if "Timestamp" not in df.columns:
 
+            df["Timestamp"] = pd.date_range(
+                start="2024-01-01",
+                periods=len(df),
+                freq="min"   # 1-minute interval
+            )
+
+        # Convert to datetime
         df["Timestamp"] = pd.to_datetime(
             df["Timestamp"],
             errors="coerce"
         )
 
+        # Remove invalid timestamps
         df = df.dropna(subset=["Timestamp"])
 
+        # Sort chronologically
         df = df.sort_values("Timestamp")
+
+        # Reset index
+        df = df.reset_index(drop=True)
 
         return df
 
@@ -41,7 +49,11 @@ def get_equipment_ids(df):
     if "Equipment_ID" not in df.columns:
         return []
 
-    return sorted(df["Equipment_ID"].dropna().unique())
+    return sorted(
+        df["Equipment_ID"]
+        .dropna()
+        .unique()
+    )
 
 
 def filter_equipment(df, equipment_id):
@@ -52,7 +64,12 @@ def filter_equipment(df, equipment_id):
     if equipment_id is None:
         return df
 
-    return df[df["Equipment_ID"] == equipment_id]
+    if "Equipment_ID" not in df.columns:
+        return df
+
+    return df[
+        df["Equipment_ID"] == equipment_id
+    ]
 
 
 def get_failure_records(df):
@@ -63,7 +80,9 @@ def get_failure_records(df):
     if "Fault Detected" not in df.columns:
         return pd.DataFrame()
 
-    return df[df["Fault Detected"] == 1]
+    return df[
+        df["Fault Detected"] == 1
+    ]
 
 
 def dataset_summary(df):
