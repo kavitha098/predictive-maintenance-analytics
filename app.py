@@ -375,6 +375,23 @@ st.subheader(
 if st.button(
     "Train & Evaluate Models"
 ):
+    if "RMSE" in results_df.columns:
+
+    st.subheader(
+        "RMSE Comparison"
+    )
+
+    fig_rmse = px.bar(
+        results_df.reset_index(),
+        x="index",
+        y="RMSE",
+        title="RMSE Comparison"
+    )
+
+    st.plotly_chart(
+        fig_rmse,
+        use_container_width=True
+    )
 
     try:
 
@@ -389,23 +406,6 @@ if st.button(
             results_df
         )
 
-        if "RMSE" in results_df.columns:
-
-            st.subheader(
-                "RMSE Comparison"
-            )
-
-       fig_rmse = px.bar(
-           results_df.reset_index(),
-           x="index",
-           y="RMSE",
-          title="RMSE Comparison"
-       )
-
-st.plotly_chart(
-    fig_rmse,
-    use_container_width=True
-)
     except Exception as e:
 
         st.error(
