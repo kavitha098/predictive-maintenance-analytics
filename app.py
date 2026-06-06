@@ -189,6 +189,52 @@ col5.metric("Avg Vibration", avg_vibration)
 # -----------------------------
 st.header("📈 Sensor Trends Over Time")
 
+col1, col2 = st.columns(2)
+
+with col1:
+
+    chart_df["Temp_Smooth"] = (
+        chart_df["Temperature (°C)"]
+        .rolling(window=20, min_periods=1)
+        .mean()
+    )
+
+    fig_temp = px.line(
+        chart_df,
+        x="Timestamp",
+        y="Temp_Smooth",
+        title="Temperature (°C)"
+    )
+
+    fig_temp.update_layout(height=400)
+
+    st.plotly_chart(
+        fig_temp,
+        use_container_width=True
+    )
+
+with col2:
+
+    chart_df["Vibration_Smooth"] = (
+        chart_df["Vibration (m/s²)"]
+        .rolling(window=20, min_periods=1)
+        .mean()
+    )
+
+    fig_vib = px.area(
+        chart_df,
+        x="Timestamp",
+        y="Vibration_Smooth",
+        title="Vibration (m/s²)"
+    )
+
+    fig_vib.update_layout(height=400)
+
+    st.plotly_chart(
+        fig_vib,
+        use_container_width=True
+    )
+
 chart_df = df.copy()
 
 # If Timestamp is index, bring it back as column
