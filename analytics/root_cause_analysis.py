@@ -1,49 +1,70 @@
 import pandas as pd
 
-def root_cause_analysis(df):
-    """
-    Identify top causes of failures.
-    """
-
-    if df is None or len(df) == 0:
-        return pd.DataFrame()
-
-    failure_cols = [
-        col for col in df.columns
-        if "failure" in col.lower()
-        or "fault" in col.lower()
-        or "breakdown" in col.lower()
-    ]
-
-    if not failure_cols:
-        return pd.DataFrame(
-            {
-                "Metric": ["No Failure Columns Found"],
-                "Value": [0]
-            }
-        )
-
-    results = []
-
-    for col in failure_cols:
-        results.append(
-            {
-                "Metric": col,
-                "Value": df[col].sum()
-                if pd.api.types.is_numeric_dtype(df[col])
-                else df[col].count()
-            }
-        )
-
-    return pd.DataFrame(results)
-
 
 def failure_summary(df):
+    """
+    Generate failure summary statistics.
+    """
 
-    if df is None:
-        return {}
+    failure_col = None
+
+    for col in df.columns:
+        if "failure" in col.lower():
+            failure_col = col
+            break
+
+    if failure_col is None:
+        return {
+            "Total Failures": 0,
+            "Failure Rate (%)": 0
+        }
+
+    total_failures = int(df[failure_col].sum())
+
+    failure_rate = round(
+        (total_failures / len(df)) * 100,
+        2
+    )
 
     return {
-        "rows": len(df),
-        "columns": len(df.columns)
+        "Total Failures": total_failures,
+        "Failure Rate (%)": failure_rate
     }
+
+
+def equipment_failure_analysis(df):
+    """
+    Failure count by equipment.
+    """
+
+    equipment_col = None
+    failure_col = None
+
+    for col in df.columns:
+
+        if "equipment" in col.lower():
+            equipment_col = col
+
+        if "failure" in col.lower():
+            failure_col = col
+
+    if equipment_col is None or failure_col is None:
+        return pd.DataFrame()
+
+    result = (
+        df.groupby(equipment_col)[failure_col]
+        .sum()
+        .reset_index()
+    )
+
+    result.columns = [
+        "Equipment_ID",
+        "Failure_Count"
+    ]
+
+    result = result.sort_values(
+        "Failure_Count",
+        ascending=False
+    )
+
+    return result
