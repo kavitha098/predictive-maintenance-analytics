@@ -191,17 +191,33 @@ st.header("📈 Sensor Trends Over Time")
 
 chart_df = df.copy()
 
+# If Timestamp is index, bring it back as column
+if "Timestamp" not in chart_df.columns:
+
+    chart_df = chart_df.reset_index()
+
+# Convert to datetime safely
 if "Timestamp" in chart_df.columns:
+
     chart_df["Timestamp"] = pd.to_datetime(
         chart_df["Timestamp"],
         errors="coerce"
     )
 
+# Remove invalid timestamps
+chart_df = chart_df.dropna(
+    subset=["Timestamp"]
+)
+
 col1, col2 = st.columns(2)
 
+# Temperature
 with col1:
 
-    if "Temperature (°C)" in chart_df.columns:
+    if (
+        "Temperature (°C)" in chart_df.columns
+        and len(chart_df) > 0
+    ):
 
         fig_temp = px.line(
             chart_df,
@@ -215,9 +231,13 @@ with col1:
             use_container_width=True
         )
 
+# Vibration
 with col2:
 
-    if "Vibration (m/s²)" in chart_df.columns:
+    if (
+        "Vibration (m/s²)" in chart_df.columns
+        and len(chart_df) > 0
+    ):
 
         fig_vib = px.line(
             chart_df,
@@ -230,8 +250,12 @@ with col2:
             fig_vib,
             use_container_width=True
         )
-        
-if "Voltage (V)" in chart_df.columns:
+
+# Voltage
+if (
+    "Voltage (V)" in chart_df.columns
+    and len(chart_df) > 0
+):
 
     st.subheader("⚡ Voltage Trend")
 
