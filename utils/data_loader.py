@@ -5,13 +5,13 @@ def load_data(file):
 
     try:
         df = pd.read_csv(file)
-         if "Timestamp" not in df.columns:
+           if "Timestamp" not in df.columns:
 
-         df["Timestamp"] = pd.date_range(
-          start="2024-01-01",
-          periods=len(df),
-          freq="min"
-         )
+           df["Timestamp"] = pd.date_range(
+                start="2024-01-01",
+                periods=len(df),
+                freq="min"
+           )
          
          
       
