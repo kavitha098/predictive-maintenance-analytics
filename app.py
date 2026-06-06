@@ -199,6 +199,7 @@ chart_df["Timestamp"] = pd.to_datetime(
     errors="coerce"
 )
 
+chart_df = chart_df.dropna(subset=["Timestamp"])
 chart_df = chart_df.sort_values("Timestamp")
 
 # Daily aggregation
@@ -212,44 +213,22 @@ chart_df = (
 
 col1, col2 = st.columns(2)
 
-# ==========================================
-# TEMPERATURE
-# Upward trend -> Peak -> Downward trend
-# ==========================================
+# =====================================================
+# TEMPERATURE TREND
+# Non-Monotonic:
+# Upward Trend -> Peak -> Downward Trend
+# =====================================================
 with col1:
 
     if "Temperature (°C)" in chart_df.columns:
 
         temp_df = chart_df.copy()
 
-        n = len(temp_df)
-
-        if n > 5:
-
-            peak = n // 2
-
-            first_half = pd.Series(
-                range(peak)
-            ).apply(
-                lambda x: 295 + (10 * x / peak)
-            )
-
-            second_half = pd.Series(
-                range(n - peak)
-            ).apply(
-                lambda x: 305 - (8 * x / (n - peak))
-            )
-
-            temp_df["Temp_Trend"] = pd.concat(
-                [first_half, second_half],
-                ignore_index=True
-            )
-
-        else:
-
-            temp_df["Temp_Trend"] = (
-                temp_df["Temperature (°C)"]
-            )
+        temp_df["Temp_Trend"] = (
+            temp_df["Temperature (°C)"]
+            .rolling(window=5, center=True, min_periods=1)
+            .mean()
+        )
 
         fig_temp = px.line(
             temp_df,
@@ -263,7 +242,7 @@ with col1:
         )
 
         fig_temp.update_layout(
-            height=400,
+            height=420,
             xaxis_title="Timestamp",
             yaxis_title="Temperature (°C)"
         )
@@ -273,34 +252,38 @@ with col1:
             use_container_width=True
         )
 
-# ==========================================
-# VIBRATION
-# High variance with spikes
-# ==========================================
+# =====================================================
+# VIBRATION TREND
+# High Variance + Spikes
+# =====================================================
 with col2:
 
-    if "Vibration (m/s²)" in chart_df.columns:
+    if "Vibration (m/s²)" in df.columns:
 
-        vib_df = chart_df.copy()
+        vib_df = df.copy()
 
-        vib_df["Vibration_Trend"] = (
-            vib_df["Vibration (m/s²)"]
-            .rolling(
-                window=2,
-                min_periods=1
-            )
-            .mean()
+        if "Timestamp" not in vib_df.columns:
+            vib_df = vib_df.reset_index()
+
+        vib_df["Timestamp"] = pd.to_datetime(
+            vib_df["Timestamp"],
+            errors="coerce"
         )
+
+        vib_df = vib_df.sort_values("Timestamp")
+
+        # Take every 10th row to reduce clutter
+        vib_df = vib_df.iloc[::10]
 
         fig_vib = px.area(
             vib_df,
             x="Timestamp",
-            y="Vibration_Trend",
+            y="Vibration (m/s²)",
             title="Vibration (m/s²)"
         )
 
         fig_vib.update_layout(
-            height=400,
+            height=420,
             xaxis_title="Timestamp",
             yaxis_title="Vibration"
         )
@@ -310,10 +293,10 @@ with col2:
             use_container_width=True
         )
 
-# ==========================================
-# VOLTAGE
-# Stable operating range
-# ==========================================
+# =====================================================
+# VOLTAGE TREND
+# Stable Operating Region
+# =====================================================
 if "Voltage (V)" in chart_df.columns:
 
     st.subheader("Voltage (V)")
@@ -322,10 +305,7 @@ if "Voltage (V)" in chart_df.columns:
 
     voltage_df["Voltage_Trend"] = (
         voltage_df["Voltage (V)"]
-        .rolling(
-            window=3,
-            min_periods=1
-        )
+        .rolling(window=5, center=True, min_periods=1)
         .mean()
     )
 
@@ -341,7 +321,7 @@ if "Voltage (V)" in chart_df.columns:
     )
 
     fig_voltage.update_layout(
-        height=400,
+        height=420,
         xaxis_title="Timestamp",
         yaxis_title="Voltage (V)"
     )
