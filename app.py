@@ -19,10 +19,14 @@ from utils.helper import (
     get_anomaly_count
 )
 
-from analytics.anomaly_detection import (
-    detect_anomalies,
-    get_anomaly_rows
-)
+try:
+    from analytics.root_cause_analysis import (
+        failure_summary,
+        equipment_failure_analysis
+    )
+except Exception as e:
+    st.error(f"Root Cause Analysis Import Error: {e}")
+    st.stop()
 
 from analytics.root_cause_analysis import (
     failure_summary,
