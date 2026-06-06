@@ -185,137 +185,164 @@ col4.metric("Avg Temperature", f"{avg_temp} °C")
 col5.metric("Avg Vibration", avg_vibration)
 
 # -----------------------------
-# SENSOR TRENDS
+# SENSOR TRENDS OVER TIME
 # -----------------------------
 st.header("📈 Sensor Trends Over Time")
 
-col1, col2 = st.columns(2)
+try:
 
-with col1:
+    # Create chart dataframe
+    chart_df = df.copy()
 
-    chart_df["Temp_Smooth"] = (
-        chart_df["Temperature (°C)"]
-        .rolling(window=20, min_periods=1)
-        .mean()
-    )
+    # If timestamp is index, convert it back to column
+    if "Timestamp" not in chart_df.columns:
 
-    fig_temp = px.line(
-        chart_df,
-        x="Timestamp",
-        y="Temp_Smooth",
-        title="Temperature (°C)"
-    )
+        chart_df = chart_df.reset_index()
 
-    fig_temp.update_layout(height=400)
+    # Verify timestamp exists
+    if "Timestamp" in chart_df.columns:
 
-    st.plotly_chart(
-        fig_temp,
-        use_container_width=True
-    )
+        chart_df["Timestamp"] = pd.to_datetime(
+            chart_df["Timestamp"],
+            errors="coerce"
+        )
 
-with col2:
+        chart_df = chart_df.dropna(
+            subset=["Timestamp"]
+        )
 
-    chart_df["Vibration_Smooth"] = (
-        chart_df["Vibration (m/s²)"]
-        .rolling(window=20, min_periods=1)
-        .mean()
-    )
+        chart_df = chart_df.sort_values(
+            by="Timestamp"
+        )
 
-    fig_vib = px.area(
-        chart_df,
-        x="Timestamp",
-        y="Vibration_Smooth",
-        title="Vibration (m/s²)"
-    )
+    else:
 
-    fig_vib.update_layout(height=400)
+        st.warning(
+            "Timestamp column not found."
+        )
 
-    st.plotly_chart(
-        fig_vib,
-        use_container_width=True
-    )
+    col1, col2 = st.columns(2)
 
-chart_df = df.copy()
+    # -----------------------------
+    # TEMPERATURE TREND
+    # -----------------------------
+    with col1:
 
-# If Timestamp is index, bring it back as column
-if "Timestamp" not in chart_df.columns:
+        if "Temperature (°C)" in chart_df.columns:
 
-    chart_df = chart_df.reset_index()
+            chart_df["Temp_Smooth"] = (
+                chart_df["Temperature (°C)"]
+                .rolling(
+                    window=20,
+                    min_periods=1
+                )
+                .mean()
+            )
 
-# Convert to datetime safely
-if "Timestamp" in chart_df.columns:
+            fig_temp = px.line(
+                chart_df,
+                x="Timestamp",
+                y="Temp_Smooth",
+                title="Temperature Trend"
+            )
 
-    chart_df["Timestamp"] = pd.to_datetime(
-        chart_df["Timestamp"],
-        errors="coerce"
-    )
+            fig_temp.update_layout(
+                height=450,
+                xaxis_title="Timestamp",
+                yaxis_title="Temperature (°C)"
+            )
 
-# Remove invalid timestamps
-chart_df = chart_df.dropna(
-    subset=["Timestamp"]
-)
+            st.plotly_chart(
+                fig_temp,
+                use_container_width=True
+            )
 
-col1, col2 = st.columns(2)
+        else:
 
-# Temperature
-with col1:
+            st.warning(
+                "Temperature (°C) column not found."
+            )
 
-    if (
-        "Temperature (°C)" in chart_df.columns
-        and len(chart_df) > 0
-    ):
+    # -----------------------------
+    # VIBRATION TREND
+    # -----------------------------
+    with col2:
 
-        fig_temp = px.line(
+        if "Vibration (m/s²)" in chart_df.columns:
+
+            chart_df["Vibration_Smooth"] = (
+                chart_df["Vibration (m/s²)"]
+                .rolling(
+                    window=20,
+                    min_periods=1
+                )
+                .mean()
+            )
+
+            fig_vib = px.area(
+                chart_df,
+                x="Timestamp",
+                y="Vibration_Smooth",
+                title="Vibration Trend"
+            )
+
+            fig_vib.update_layout(
+                height=450,
+                xaxis_title="Timestamp",
+                yaxis_title="Vibration (m/s²)"
+            )
+
+            st.plotly_chart(
+                fig_vib,
+                use_container_width=True
+            )
+
+        else:
+
+            st.warning(
+                "Vibration (m/s²) column not found."
+            )
+
+    # -----------------------------
+    # VOLTAGE TREND
+    # -----------------------------
+    if "Voltage (V)" in chart_df.columns:
+
+        st.subheader("⚡ Voltage Trend")
+
+        chart_df["Voltage_Smooth"] = (
+            chart_df["Voltage (V)"]
+            .rolling(
+                window=20,
+                min_periods=1
+            )
+            .mean()
+        )
+
+        fig_voltage = px.line(
             chart_df,
             x="Timestamp",
-            y="Temperature (°C)",
-            title="Temperature Trend"
+            y="Voltage_Smooth",
+            title="Voltage Trend"
+        )
+
+        fig_voltage.update_layout(
+            height=450,
+            xaxis_title="Timestamp",
+            yaxis_title="Voltage (V)"
         )
 
         st.plotly_chart(
-            fig_temp,
+            fig_voltage,
             use_container_width=True
         )
 
-# Vibration
-with col2:
+except Exception as e:
 
-    if (
-        "Vibration (m/s²)" in chart_df.columns
-        and len(chart_df) > 0
-    ):
-
-        fig_vib = px.line(
-            chart_df,
-            x="Timestamp",
-            y="Vibration (m/s²)",
-            title="Vibration Trend"
-        )
-
-        st.plotly_chart(
-            fig_vib,
-            use_container_width=True
-        )
-
-# Voltage
-if (
-    "Voltage (V)" in chart_df.columns
-    and len(chart_df) > 0
-):
-
-    st.subheader("⚡ Voltage Trend")
-
-    fig_voltage = px.line(
-        chart_df,
-        x="Timestamp",
-        y="Voltage (V)",
-        title="Voltage Trend"
+    st.error(
+        f"Sensor Trend Error: {e}"
     )
 
-    st.plotly_chart(
-        fig_voltage,
-        use_container_width=True
-    )
         
 
 # -----------------------------
