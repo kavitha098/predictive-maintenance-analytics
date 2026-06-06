@@ -206,7 +206,7 @@ chart_df = chart_df.sort_values("Timestamp")
 chart_df = (
     chart_df
     .set_index("Timestamp")
-    .resample("1H")
+    .resample("6H")
     .mean(numeric_only=True)
     .reset_index()
 )
