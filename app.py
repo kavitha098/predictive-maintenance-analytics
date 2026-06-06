@@ -124,6 +124,22 @@ try:
         threshold
     )
 
+    # Debug information
+    if "Anomaly_Alert" in df.columns:
+
+        st.sidebar.write(
+            "Anomaly Counts"
+        )
+
+        st.sidebar.write(
+            df["Anomaly_Alert"]
+            .value_counts()
+        )
+
+        st.sidebar.write(
+            f"Total Alerts: {int(df['Anomaly_Alert'].sum())}"
+        )
+
 except Exception as e:
     st.error(
         f"Anomaly Detection Error: {e}"
@@ -236,20 +252,48 @@ if (
 # -----------------------------
 # ANOMALY ALERTS
 # -----------------------------
-st.subheader(
-    "🚨 Active Failure Alerts"
-)
+st.subheader("🚨 Active Failure Alerts")
 
 if "Anomaly_Alert" in df.columns:
+
+    # Show anomaly distribution
+    st.write("Anomaly Distribution")
+
+    st.dataframe(
+        df["Anomaly_Alert"]
+        .value_counts()
+        .reset_index()
+        .rename(
+            columns={
+                "index": "Anomaly Flag",
+                "Anomaly_Alert": "Count"
+            }
+        )
+    )
 
     alerts_df = df[
         df["Anomaly_Alert"] == 1
     ]
 
-    st.dataframe(
-        alerts_df
+    st.write(
+        f"Total Active Alerts: {len(alerts_df)}"
     )
 
+    if len(alerts_df) > 0:
+
+        st.dataframe(
+            alerts_df,
+            use_container_width=True
+        )
+
+    else:
+
+        st.warning(
+            "No active anomalies detected at the current threshold. "
+            "Try lowering the Z-Score Threshold from 3.0 to 2.0."
+        )
+
+        
 # -----------------------------
 # ROOT CAUSE ANALYSIS
 # -----------------------------
