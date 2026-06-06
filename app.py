@@ -183,7 +183,6 @@ col2.metric("Anomaly Alerts", active_alerts)
 col3.metric("Failures", failures)
 col4.metric("Avg Temperature", f"{avg_temp} °C")
 col5.metric("Avg Vibration", avg_vibration)
-
 # -----------------------------
 # SENSOR TRENDS OVER TIME
 # -----------------------------
@@ -202,7 +201,7 @@ chart_df["Timestamp"] = pd.to_datetime(
 
 chart_df = chart_df.sort_values("Timestamp")
 
-# Downsample data to create smooth trends
+# Daily aggregation
 chart_df = (
     chart_df
     .set_index("Timestamp")
@@ -220,21 +219,30 @@ with col1:
 
     if "Temperature (°C)" in chart_df.columns:
 
+        temp_df = chart_df.copy()
+
+        # Large rolling window to create smooth rise-then-fall trend
+        temp_df["Temp_Trend"] = (
+            temp_df["Temperature (°C)"]
+            .rolling(window=7, center=True, min_periods=1)
+            .mean()
+        )
+
         fig_temp = px.line(
-            chart_df,
+            temp_df,
             x="Timestamp",
-            y="Temperature (°C)",
+            y="Temp_Trend",
             title="Temperature (°C)"
         )
 
         fig_temp.update_traces(
-            line=dict(width=2)
+            line=dict(width=3)
         )
 
         fig_temp.update_layout(
             height=400,
             xaxis_title="Timestamp",
-            yaxis_title="Temperature"
+            yaxis_title="Temperature (°C)"
         )
 
         st.plotly_chart(
@@ -247,10 +255,25 @@ with col1:
 # -----------------------------
 with col2:
 
-    if "Vibration (m/s²)" in chart_df.columns:
+    if "Vibration (m/s²)" in df.columns:
+
+        vib_df = df.copy()
+
+        if "Timestamp" not in vib_df.columns:
+            vib_df = vib_df.reset_index()
+
+        vib_df["Timestamp"] = pd.to_datetime(
+            vib_df["Timestamp"],
+            errors="coerce"
+        )
+
+        vib_df = vib_df.sort_values("Timestamp")
+
+        # Keep high-frequency vibration data
+        vib_df = vib_df.iloc[::5]
 
         fig_vib = px.area(
-            chart_df,
+            vib_df,
             x="Timestamp",
             y="Vibration (m/s²)",
             title="Vibration (m/s²)"
@@ -274,10 +297,18 @@ if "Voltage (V)" in chart_df.columns:
 
     st.subheader("Voltage (V)")
 
+    voltage_df = chart_df.copy()
+
+    voltage_df["Voltage_Trend"] = (
+        voltage_df["Voltage (V)"]
+        .rolling(window=5, center=True, min_periods=1)
+        .mean()
+    )
+
     fig_voltage = px.line(
-        chart_df,
+        voltage_df,
         x="Timestamp",
-        y="Voltage (V)",
+        y="Voltage_Trend",
         title="Voltage (V)"
     )
 
@@ -288,7 +319,7 @@ if "Voltage (V)" in chart_df.columns:
     fig_voltage.update_layout(
         height=400,
         xaxis_title="Timestamp",
-        yaxis_title="Voltage"
+        yaxis_title="Voltage (V)"
     )
 
     st.plotly_chart(
@@ -296,7 +327,6 @@ if "Voltage (V)" in chart_df.columns:
         use_container_width=True
     )
 
-        
 
 # -----------------------------
 # ANOMALY ALERTS
