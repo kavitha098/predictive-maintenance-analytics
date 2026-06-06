@@ -2,16 +2,13 @@ import pandas as pd
 
 
 def load_data(file):
-    """
-    Load CSV data and convert Timestamp column to datetime.
-    """
 
     try:
         df = pd.read_csv(file)
 
         if "Timestamp" not in df.columns:
             raise ValueError(
-                "Dataset must contain a 'Timestamp' column."
+                "Dataset must contain a Timestamp column."
             )
 
         df["Timestamp"] = pd.to_datetime(
@@ -21,12 +18,14 @@ def load_data(file):
 
         df = df.dropna(subset=["Timestamp"])
 
-        df.set_index("Timestamp", inplace=True)
+        df = df.sort_values("Timestamp")
 
         return df
 
     except Exception as e:
-        raise Exception(f"Error loading data: {e}")
+        raise Exception(
+            f"Error loading data: {e}"
+        )
 
 
 def get_equipment_ids(df):
