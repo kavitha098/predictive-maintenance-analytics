@@ -183,6 +183,7 @@ col2.metric("Anomaly Alerts", active_alerts)
 col3.metric("Failures", failures)
 col4.metric("Avg Temperature", f"{avg_temp} °C")
 col5.metric("Avg Vibration", avg_vibration)
+
 # -----------------------------
 # SENSOR TRENDS OVER TIME
 # -----------------------------
@@ -190,7 +191,7 @@ st.header("📈 Sensor Trends Over Time")
 
 chart_df = df.copy()
 
-# Convert timestamp index to column if needed
+# Convert index back to column
 if "Timestamp" not in chart_df.columns:
     chart_df = chart_df.reset_index()
 
@@ -201,39 +202,28 @@ chart_df["Timestamp"] = pd.to_datetime(
 
 chart_df = chart_df.sort_values("Timestamp")
 
-# Smooth the data
-if "Temperature (°C)" in chart_df.columns:
-    chart_df["Temperature_Smooth"] = (
-        chart_df["Temperature (°C)"]
-        .rolling(window=100, min_periods=1)
-        .mean()
-    )
-
-if "Vibration (m/s²)" in chart_df.columns:
-    chart_df["Vibration_Smooth"] = (
-        chart_df["Vibration (m/s²)"]
-        .rolling(window=100, min_periods=1)
-        .mean()
-    )
-
-if "Voltage (V)" in chart_df.columns:
-    chart_df["Voltage_Smooth"] = (
-        chart_df["Voltage (V)"]
-        .rolling(window=100, min_periods=1)
-        .mean()
-    )
+# Downsample data to create smooth trends
+chart_df = (
+    chart_df
+    .set_index("Timestamp")
+    .resample("1H")
+    .mean(numeric_only=True)
+    .reset_index()
+)
 
 col1, col2 = st.columns(2)
 
-# Temperature
+# -----------------------------
+# TEMPERATURE TREND
+# -----------------------------
 with col1:
 
-    if "Temperature_Smooth" in chart_df.columns:
+    if "Temperature (°C)" in chart_df.columns:
 
         fig_temp = px.line(
             chart_df,
             x="Timestamp",
-            y="Temperature_Smooth",
+            y="Temperature (°C)",
             title="Temperature (°C)"
         )
 
@@ -244,7 +234,7 @@ with col1:
         fig_temp.update_layout(
             height=400,
             xaxis_title="Timestamp",
-            yaxis_title="Temperature °C"
+            yaxis_title="Temperature"
         )
 
         st.plotly_chart(
@@ -252,20 +242,18 @@ with col1:
             use_container_width=True
         )
 
-# Vibration
+# -----------------------------
+# VIBRATION TREND
+# -----------------------------
 with col2:
 
-    if "Vibration_Smooth" in chart_df.columns:
+    if "Vibration (m/s²)" in chart_df.columns:
 
-        fig_vib = px.line(
+        fig_vib = px.area(
             chart_df,
             x="Timestamp",
-            y="Vibration_Smooth",
+            y="Vibration (m/s²)",
             title="Vibration (m/s²)"
-        )
-
-        fig_vib.update_traces(
-            line=dict(width=1)
         )
 
         fig_vib.update_layout(
@@ -279,27 +267,34 @@ with col2:
             use_container_width=True
         )
 
-# Voltage chart below
-if "Voltage_Smooth" in chart_df.columns:
+# -----------------------------
+# VOLTAGE TREND
+# -----------------------------
+if "Voltage (V)" in chart_df.columns:
 
     st.subheader("Voltage (V)")
 
     fig_voltage = px.line(
         chart_df,
         x="Timestamp",
-        y="Voltage_Smooth",
+        y="Voltage (V)",
         title="Voltage (V)"
     )
 
+    fig_voltage.update_traces(
+        line=dict(width=2)
+    )
+
     fig_voltage.update_layout(
-        height=400
+        height=400,
+        xaxis_title="Timestamp",
+        yaxis_title="Voltage"
     )
 
     st.plotly_chart(
         fig_voltage,
         use_container_width=True
     )
-
 
         
 
