@@ -145,109 +145,108 @@ except Exception as e:
         f"Anomaly Detection Error: {e}"
     )
     st.stop()
-
 # -----------------------------
-# METRICS
+# OVERVIEW DASHBOARD
 # -----------------------------
-col1, col2, col3 = st.columns(3)
+st.header("📊 Overview")
 
-col1.metric(
-    "Total Records",
-    len(df)
+col1, col2, col3, col4, col5 = st.columns(5)
+
+total_records = len(df)
+
+active_alerts = (
+    int(df["Anomaly_Alert"].sum())
+    if "Anomaly_Alert" in df.columns
+    else 0
 )
 
-if "Temperature (°C)" in df.columns:
-    current_temp = round(
-        float(
-            df["Temperature (°C)"].iloc[-1]
-        ),
-        2
-    )
-else:
-    current_temp = "N/A"
-
-col2.metric(
-    "Current Temperature",
-    current_temp
+failures = (
+    int(df["Fault Detected"].sum())
+    if "Fault Detected" in df.columns
+    else active_alerts
 )
 
-if "Anomaly_Alert" in df.columns:
-    active_alerts = int(
-        df["Anomaly_Alert"].sum()
-    )
-else:
-    active_alerts = 0
-
-col3.metric(
-    "Active Alerts",
-    active_alerts
+avg_temp = (
+    round(df["Temperature (°C)"].mean(), 2)
+    if "Temperature (°C)" in df.columns
+    else 0
 )
 
+avg_vibration = (
+    round(df["Vibration (m/s²)"].mean(), 2)
+    if "Vibration (m/s²)" in df.columns
+    else 0
+)
+
+col1.metric("Total Records", total_records)
+col2.metric("Anomaly Alerts", active_alerts)
+col3.metric("Failures", failures)
+col4.metric("Avg Temperature", f"{avg_temp} °C")
+col5.metric("Avg Vibration", avg_vibration)
+
 # -----------------------------
-# TEMPERATURE TREND
+# SENSOR TRENDS
 # -----------------------------
-if (
-    "Temperature (°C)" in df.columns
-    and len(df) > 0
-):
+st.header("📈 Sensor Trends Over Time")
 
-    st.subheader("🌡 Temperature Trend")
+chart_df = df.copy()
 
-    chart_df = df.reset_index()
-
-    failure_limit = (
-        chart_df["Temperature (°C)"].mean()
-        +
-        3 *
-        chart_df["Temperature (°C)"].std()
+if "Timestamp" in chart_df.columns:
+    chart_df["Timestamp"] = pd.to_datetime(
+        chart_df["Timestamp"],
+        errors="coerce"
     )
 
-    fig = px.line(
+col1, col2 = st.columns(2)
+
+with col1:
+
+    if "Temperature (°C)" in chart_df.columns:
+
+        fig_temp = px.line(
+            chart_df,
+            x="Timestamp",
+            y="Temperature (°C)",
+            title="Temperature Trend"
+        )
+
+        st.plotly_chart(
+            fig_temp,
+            use_container_width=True
+        )
+
+with col2:
+
+    if "Vibration (m/s²)" in chart_df.columns:
+
+        fig_vib = px.line(
+            chart_df,
+            x="Timestamp",
+            y="Vibration (m/s²)",
+            title="Vibration Trend"
+        )
+
+        st.plotly_chart(
+            fig_vib,
+            use_container_width=True
+        )
+        
+if "Voltage (V)" in chart_df.columns:
+
+    st.subheader("⚡ Voltage Trend")
+
+    fig_voltage = px.line(
         chart_df,
         x="Timestamp",
-        y="Temperature (°C)",
-        title="Temperature Over Time"
-    )
-
-    fig.add_hline(
-        y=failure_limit,
-        line_dash="dash",
-        annotation_text="Failure Ceiling"
+        y="Voltage (V)",
+        title="Voltage Trend"
     )
 
     st.plotly_chart(
-        fig,
+        fig_voltage,
         use_container_width=True
     )
-
-    st.metric(
-        "Failure Ceiling",
-        round(failure_limit, 2)
-    )
-
-# -----------------------------
-# VIBRATION TREND
-# -----------------------------
-if (
-    "Vibration (m/s²)" in df.columns
-    and len(df) > 0
-):
-
-    st.subheader("📈 Vibration Trend")
-
-    chart_df = df.reset_index()
-
-    fig = px.line(
-        chart_df,
-        x="Timestamp",
-        y="Vibration (m/s²)",
-        title="Vibration Over Time"
-    )
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
+        
 
 # -----------------------------
 # ANOMALY ALERTS
@@ -292,6 +291,32 @@ if "Anomaly_Alert" in df.columns:
             "No active anomalies detected at the current threshold. "
             "Try lowering the Z-Score Threshold from 3.0 to 2.0."
         )
+if "Fault Detected" in df.columns:
+
+    st.subheader("🥧 Failure Distribution")
+
+    failure_counts = (
+        df["Fault Detected"]
+        .value_counts()
+        .reset_index()
+    )
+
+    failure_counts.columns = [
+        "Status",
+        "Count"
+    ]
+
+    fig_pie = px.pie(
+        failure_counts,
+        names="Status",
+        values="Count",
+        title="Failure Distribution"
+    )
+
+    st.plotly_chart(
+        fig_pie,
+        use_container_width=True
+    )
 
         
 # -----------------------------
@@ -370,12 +395,17 @@ if st.button(
                 "RMSE Comparison"
             )
 
-            st.bar_chart(
-                results_df[
-                    ["RMSE"]
-                ]
-            )
+       fig_rmse = px.bar(
+           results_df.reset_index(),
+           x="index",
+           y="RMSE",
+          title="RMSE Comparison"
+       )
 
+st.plotly_chart(
+    fig_rmse,
+    use_container_width=True
+)
     except Exception as e:
 
         st.error(
