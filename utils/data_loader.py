@@ -5,11 +5,16 @@ def load_data(file):
 
     try:
         df = pd.read_csv(file)
+         if "Timestamp" not in df.columns:
 
-        if "Timestamp" not in df.columns:
-            raise ValueError(
-                "Dataset must contain a Timestamp column."
-            )
+         df["Timestamp"] = pd.date_range(
+          start="2024-01-01",
+          periods=len(df),
+          freq="min"
+         )
+         
+         
+      
 
         df["Timestamp"] = pd.to_datetime(
             df["Timestamp"],
